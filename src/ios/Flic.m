@@ -22,32 +22,52 @@ static NSString * const BUTTON_EVENT_SINGLECLICK = @"singleClick";
 static NSString * const BUTTON_EVENT_DOUBLECLICK = @"doubleClick";
 static NSString * const BUTTON_EVENT_HOLD = @"hold";
 @synthesize onButtonClickCallbackId;
+@synthesize deepCallbackId;
+
 
 - (void)pluginInitialize
 {
     [self log:@"pluginInitialize"];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(handleOpenURL:) name:@"flicApp" object:nil];
+    _handlers = [[NSMutableArray alloc] init];
 }
 
 - (void) init:(CDVInvokedUrlCommand*)command
 {
     [self log:@"init"];
-    
-	NSDictionary *config = [command.arguments objectAtIndex:0];
-	NSString* APP_ID = [config objectForKey:@"appId"];
-	NSString* APP_SECRET = [config objectForKey:@"appSecret"];
-	
+
+    NSDictionary *config = [command.arguments objectAtIndex:0];
+    NSString* APP_ID = [config objectForKey:@"appId"];
+    NSString* APP_SECRET = [config objectForKey:@"appSecret"];
+    [_handlers addObject:command.callbackId];
     self.flicManager = [SCLFlicManager configureWithDelegate:self defaultButtonDelegate:self appID:APP_ID appSecret:APP_SECRET backgroundExecution:YES];
 
-    
     CDVPluginResult* result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsArray:[self knownButtons]];
     [self.commandDelegate sendPluginResult:result callbackId:command.callbackId ];
+
+
+}
+
+- (void) sendToJs {
+    // Send the last event to JS if we have one
+    if (_handlers.count == 0 || _lastEvent == nil) {
+        return;
+    }
+
+    // Iterate our handlers and send the event
+    for (id callbackID in _handlers) {
+        NSLog(@"sendToJs %@", callbackID);
+        [self.commandDelegate sendPluginResult:_lastEvent callbackId:callbackID];
+    }
+
+    // Clear out the last event
+    _lastEvent = nil;
 }
 
 - (void) getKnownButtons:(CDVInvokedUrlCommand*)command
 {
     [self log:@"getKnownButtons"];
-    
+
     CDVPluginResult* result;
     // in case plugin is not initialized
     if (self.flicManager == nil) {
@@ -55,14 +75,14 @@ static NSString * const BUTTON_EVENT_HOLD = @"hold";
         [self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
         return;
     }
-    
-	result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsArray:[self knownButtons]];
-	[self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
+
+    result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsArray:[self knownButtons]];
+    [self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
 }
 
 - (void) flicManagerDidRestoreState:(SCLFlicManager * _Nonnull) manager{
     [self log:@"flicManagerDidRestoreState"];
-    
+
     // setup trigger behavior for already grabbed buttons
     NSArray * kButtons = [[SCLFlicManager sharedManager].knownButtons allValues];
     for (SCLFlicButton *button in kButtons) {
@@ -70,10 +90,12 @@ static NSString * const BUTTON_EVENT_HOLD = @"hold";
     }
 }
 
+
+
 - (void) grabButton:(CDVInvokedUrlCommand*)command
 {
     [self log:@"grabButton"];
-    
+
     CDVPluginResult* result;
     // in case plugin is not initialized
     if (self.flicManager == nil) {
@@ -82,10 +104,16 @@ static NSString * const BUTTON_EVENT_HOLD = @"hold";
         [self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
         return;
     }
+
+
     NSString *FlicUrlScheme = [[[NSBundle mainBundle] infoDictionary] objectForKey:@"FlicUrlScheme"];
-	[[SCLFlicManager sharedManager] grabFlicFromFlicAppWithCallbackUrlScheme:FlicUrlScheme];
-	result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK];
-	[self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
+
+    [[SCLFlicManager sharedManager] grabFlicFromFlicAppWithCallbackUrlScheme:FlicUrlScheme];
+    result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK];
+    [self log:@"grabButton result" ];
+    NSLog( @"grabButton result: '%@'", result );
+    NSLog( @"grabButton callback: '%@'", command.callbackId );
+    [self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
 }
 
 - (void) waitForButtonEvent:(CDVInvokedUrlCommand*)command
@@ -106,6 +134,13 @@ static NSString * const BUTTON_EVENT_HOLD = @"hold";
     return;
 }
 
+- (void) onDeepLink:(CDVInvokedUrlCommand *)command
+{
+    self.deepCallbackId = command.callbackId;
+    NSLog(@"will send back to : %@", self.deepCallbackId);
+    return;
+}
+
 // button received
 - (void)flicManager:(SCLFlicManager *)manager didGrabFlicButton:(SCLFlicButton *)button withError:(NSError *)error;
 {
@@ -113,11 +148,11 @@ static NSString * const BUTTON_EVENT_HOLD = @"hold";
     {
         NSLog(@"Could not grab: %@", error);
     }
-    
+
     if(button != nil){
         button.triggerBehavior = SCLFlicButtonTriggerBehaviorClickAndDoubleClickAndHold;
     }
-    
+
     [self log:@"Grabbed button"];
 }
 
@@ -131,7 +166,7 @@ static NSString * const BUTTON_EVENT_HOLD = @"hold";
 - (void)flicButton:(SCLFlicButton *)button didReceiveButtonClick:(BOOL)queued age:(NSInteger)age
 {
     [self log:@"didReceiveButtonClick"];
-    
+
     CDVPluginResult* result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:[self getButtonEventObject:BUTTON_EVENT_SINGLECLICK button:button queued:queued age:age]];
     [result setKeepCallbackAsBool:YES];
     [self.commandDelegate sendPluginResult:result callbackId:self.onButtonClickCallbackId];
@@ -159,41 +194,41 @@ static NSString * const BUTTON_EVENT_HOLD = @"hold";
 {
     NSDictionary *buttonResult = [self getButtonJsonObject:button];
     NSDictionary *result = @{
-                   @"event": event,
-                   @"button": buttonResult,
-                   @"wasQueued": @(queued),
-                   @"timeDiff": [NSNumber numberWithInteger:age]
-                };
-    
+                             @"event": event,
+                             @"button": buttonResult,
+                             @"wasQueued": @(queued),
+                             @"timeDiff": [NSNumber numberWithInteger:age]
+                             };
+
     return result;
 }
 
 - (NSMutableArray*)knownButtons
 {
     NSMutableArray *result = [[NSMutableArray alloc] init];
-    
+
     NSLog(@"get knownButtons");
-    
+
     NSArray * kButtons = [[SCLFlicManager sharedManager].knownButtons allValues];
     for (SCLFlicButton *button in kButtons) {
         NSDictionary* b = [self getButtonJsonObject:button];
         [result addObject:b];
     }
-    
+
     return result;
 }
 
 - (NSDictionary*)getButtonJsonObject:(SCLFlicButton *)button
 {
     NSDictionary *result = @{
-        @"buttonId": [button.buttonIdentifier UUIDString],
-        @"name": button.userAssignedName,
-        @"color": [self hexStringForColor:button.color],
-        @"colorHex": [self hexStringForColor:button.color],
-        @"connectionState": [self connectionStateForButton:button],
-        @"status": [self connectionStateForButton:button]
-        };
-    
+                             @"buttonId": [button.buttonIdentifier UUIDString],
+                             @"name": button.userAssignedName,
+                             @"color": [self hexStringForColor:button.color],
+                             @"colorHex": [self hexStringForColor:button.color],
+                             @"connectionState": [self connectionStateForButton:button],
+                             @"status": [self connectionStateForButton:button]
+                             };
+
     return result;
 }
 
@@ -202,7 +237,7 @@ static NSString * const BUTTON_EVENT_HOLD = @"hold";
     {
         return @"";
     }
-    
+
     if (button.connectionState == SCLFlicButtonConnectionStateConnected) {
         return @"Connected";
     }else if (button.connectionState == SCLFlicButtonConnectionStateConnecting) {
@@ -212,7 +247,7 @@ static NSString * const BUTTON_EVENT_HOLD = @"hold";
     }else if (button.connectionState == SCLFlicButtonConnectionStateDisconnecting) {
         return @"Disconnecting";
     }
-    
+
     return @"unknown";
 }
 
@@ -228,12 +263,41 @@ static NSString * const BUTTON_EVENT_HOLD = @"hold";
 - (void)handleOpenURL:(NSNotification*)notification
 {
     NSURL* url = [notification object];
-    
+    // _lastEvent = [self createResult:url];
+    // NSLog(@"_lastEvent %@", _lastEvent);
+    // [self sendToJs];
     if ([url isKindOfClass:[NSURL class]]) {
         [[SCLFlicManager sharedManager] handleOpenURL:url];
-        
-        NSLog(@"handleOpenURL %@", url);
+        NSLog(@"is sending to  %@", self.deepCallbackId);
+        //self.deepCallbackI
+        NSDictionary* data = @{
+                           @"url": [url absoluteString] ?: @"",
+                           @"path": [url path] ?: @"",
+                           @"queryString": [url query] ?: @"",
+                           @"scheme": [url scheme] ?: @"",
+                           @"host": [url host] ?: @"",
+                           @"fragment": [url fragment] ?: @""
+                           };
+        CDVPluginResult* result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:data];
+    [result setKeepCallbackAsBool:YES];
+    [self.commandDelegate sendPluginResult:result callbackId:self.self.deepCallbackId];
+        NSLog(@"handleOpenURLandDeep %@", url);
     }
+}
+
+- (CDVPluginResult *)createResult:(NSURL *)url {
+    NSDictionary* data = @{
+                           @"url": [url absoluteString] ?: @"",
+                           @"path": [url path] ?: @"",
+                           @"queryString": [url query] ?: @"",
+                           @"scheme": [url scheme] ?: @"",
+                           @"host": [url host] ?: @"",
+                           @"fragment": [url fragment] ?: @""
+                           };
+
+    CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:data];
+    [result setKeepCallbackAsBool:YES];
+    return result;
 }
 
 // this logic help us to start app in the background
@@ -241,7 +305,7 @@ static NSString * const BUTTON_EVENT_HOLD = @"hold";
 - (void) onAppTerminate{
     locationManager = [[CLLocationManager alloc] init];
     locationManager.delegate = self;
-    
+
     if([locationManager respondsToSelector:@selector(requestAlwaysAuthorization)]) {
         [locationManager startMonitoringSignificantLocationChanges];
     } else {
@@ -263,6 +327,12 @@ static NSString * const BUTTON_EVENT_HOLD = @"hold";
 {
     NSLog(@"%@%@", TAG, text);
 }
+
+//- (void)onDeepLink:(CDVInvokedUrlCommand *)command {
+//  [_handlers addObject:command.callbackId];
+//  // Try to consume any events we got before we were listening
+//  [self sendToJs];
+//}
 
 @end
 
