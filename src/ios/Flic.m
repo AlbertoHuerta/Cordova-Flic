@@ -22,7 +22,7 @@ static NSString * const BUTTON_EVENT_SINGLECLICK = @"singleClick";
 static NSString * const BUTTON_EVENT_DOUBLECLICK = @"doubleClick";
 static NSString * const BUTTON_EVENT_HOLD = @"hold";
 @synthesize onButtonClickCallbackId;
-@synthesize deepCallbackId;
+
 - (void)pluginInitialize
 {
     [self log:@"pluginInitialize"];
@@ -110,12 +110,7 @@ static NSString * const BUTTON_EVENT_HOLD = @"hold";
     return;
 }
 
-- (void) onDeepLink:(CDVInvokedUrlCommand *)command
-{
-    self.deepCallbackId = command.callbackId;
-    NSLog(@"will send back to : %@", self.deepCallbackId);
-    return;
-}
+
 
 // button received
 - (void)flicManager:(SCLFlicManager *)manager didGrabFlicButton:(SCLFlicButton *)button withError:(NSError *)error;
@@ -242,21 +237,8 @@ static NSString * const BUTTON_EVENT_HOLD = @"hold";
 
     if ([url isKindOfClass:[NSURL class]]) {
         [[SCLFlicManager sharedManager] handleOpenURL:url];
-         NSLog(@"is sending to  %@", self.deepCallbackId);
-                //self.deepCallbackI
-                NSDictionary* data = @{
-                                   @"url": [url absoluteString] ?: @"",
-                                   @"path": [url path] ?: @"",
-                                   @"queryString": [url query] ?: @"",
-                                   @"scheme": [url scheme] ?: @"",
-                                   @"host": [url host] ?: @"",
-                                   @"fragment": [url fragment] ?: @""
-                                   };
-                CDVPluginResult* result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:data];
-            [result setKeepCallbackAsBool:YES];
 
-       [self.commandDelegate sendPluginResult:result callbackId:self.self.deepCallbackId];
-               NSLog(@"handleOpenURLandDeep %@", url);
+        NSLog(@"handleOpenURL %@", url);
     }
 }
 
