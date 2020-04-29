@@ -36,13 +36,13 @@ Set in your config.xml at `<platform name ="ios">` for the iOS
                     <dict>
                         <key>CFBundleURLSchemes</key>
                         <array>
-                            <string>urlYourApp</string>
+                            <string>YourAppURL</string>
                         </array>
                     </dict>
                 </array>
             </config-file>
             <config-file parent="FlicUrlScheme" target="*-Info.plist">
-                <string>urlYourApp</string>
+                <string>YourAppURL</string>
             </config-file>
 ```
 
