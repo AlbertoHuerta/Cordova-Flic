@@ -18,10 +18,32 @@ Set `android:minSdkVersion="19"` or higher in config.xml for the Android
 
 ### iOS
 
-Set `deployment-target=8.0` or higher in config.xml for the iOS 
+Set in your config.xml at `<platform name ="ios">` for the iOS 
 
 ```xml
-	<preference name="deployment-target" value="8.0" />
+	     <config-file parent="UIBackgroundModes" target="*-Info.plist">
+                <array>
+                    <string>bluetooth-central</string>
+                </array>
+            </config-file>
+            <config-file parent="LSApplicationQueriesSchemes" target="*-Info.plist">
+                <array>
+                    <string>flic20</string>
+                </array>
+            </config-file>
+            <config-file parent="CFBundleURLTypes" target="*-Info.plist">
+                <array>
+                    <dict>
+                        <key>CFBundleURLSchemes</key>
+                        <array>
+                            <string>urlYourApp</string>
+                        </array>
+                    </dict>
+                </array>
+            </config-file>
+            <config-file parent="FlicUrlScheme" target="*-Info.plist">
+                <string>urlYourApp</string>
+            </config-file>
 ```
 
 Make sure, that you have installed [node-xcode](https://www.npmjs.com/package/xcode) version 0.8.7 or higher on your Mac
@@ -32,6 +54,20 @@ $ npm i xcode
 
 	$ cordova build ios
 
+
+Open project.xcworkspace in project/platforms/ios and check that ```Frameworks, Libraries, and Embedded Content``` section under the ```General``` tab of your application's target setting.
+
+Ensure that fliclib.xcframework is listed as Embed & Sign:
+
+
+ ![Alt Text](./images/frameworks.png)
+ 
+ 
+ 
+ Add the xcframework to ```Link Binary With Libraries``` under the ```Build Phases``` tab.
+  ![Alt Text](./images/linkbinary.png)
+  
+  
 ## Plugin API
 It has been currently stripped to the minimum needed from a Javascript app.
 
