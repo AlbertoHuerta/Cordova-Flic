@@ -30,11 +30,11 @@
 				The value attribute should match the name of the plugin's Java class.
 			-->
 			<feature name="Flic" >
-				<param name="android-package" value="com.bhe97.cordova.Flic"/>
+				<param name="android-package" value="com.bhe97.Flic.Flic"/>
 			</feature>
 		</config-file>
-		<source-file src="src/android/Flic.java" target-dir="src/com/bhe97/cordova/Flic" />
-		<source-file src="src/android/PluginSettings.java" target-dir="src/com/bhe97/cordova/Flic" />
+		<source-file src="src/android/Flic.java" target-dir="com/bhe97/Flic" />
+		<source-file src="src/android/PluginSettings.java" target-dir="com/bhe97/Flic" />
 	</platform>
 	<!-- ios -->
 	<platform name="ios">
