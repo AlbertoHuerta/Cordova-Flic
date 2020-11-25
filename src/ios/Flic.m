@@ -1,8 +1,6 @@
 //
 //  Flic
 //
-//  Created by Maxim Dukhanov <m.dukhanov@gmail.com>
-//
 
 #import "Flic.h"
 #import <Cordova/CDVAvailability.h>
@@ -17,7 +15,7 @@
 }
 
 static NSString * const pluginNotInitializedMessage = @"flic is not initialized";
-static NSString * const TAG = @"[TAF Flic] ";
+static NSString * const TAG = @"[Flic] ";
 static NSString * const BUTTON_EVENT_SINGLECLICK = @"singleClick";
 static NSString * const BUTTON_EVENT_DOUBLECLICK = @"doubleClick";
 static NSString * const BUTTON_EVENT_HOLD = @"hold";
@@ -26,9 +24,8 @@ static NSString * const BUTTON_EVENT_HOLD = @"hold";
 - (void)pluginInitialize
 {
     [self log:@"pluginInitialize"];
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(handleOpenURL:) name:@"flicApp" object:nil];
+     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(handleOpenURL:) name:@"flicApp" object:nil];
 }
-
 
 - (void) init:(CDVInvokedUrlCommand*)command
 {
@@ -39,7 +36,6 @@ static NSString * const BUTTON_EVENT_HOLD = @"hold";
 	NSString* APP_SECRET = [config objectForKey:@"appSecret"];
 
     self.flicManager = [SCLFlicManager configureWithDelegate:self defaultButtonDelegate:self appID:APP_ID appSecret:APP_SECRET backgroundExecution:YES];
-
 
     CDVPluginResult* result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsArray:[self knownButtons]];
     [self.commandDelegate sendPluginResult:result callbackId:command.callbackId ];
@@ -76,6 +72,7 @@ static NSString * const BUTTON_EVENT_HOLD = @"hold";
     [self log:@"grabButton"];
 
     CDVPluginResult* result;
+
     // in case plugin is not initialized
     if (self.flicManager == nil) {
         [self log:@"flicManager is null"];
@@ -85,11 +82,41 @@ static NSString * const BUTTON_EVENT_HOLD = @"hold";
     }
     NSString *FlicUrlScheme = [[[NSBundle mainBundle] infoDictionary] objectForKey:@"FlicUrlScheme"];
 	[[SCLFlicManager sharedManager] grabFlicFromFlicAppWithCallbackUrlScheme:FlicUrlScheme];
+
 	result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK];
-	    [self log:@"grabButton result" ];
-        NSLog( @"grabButton result: '%@'", result );
-        NSLog( @"grabButton callback: '%@'", command.callbackId );
 	[self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
+}
+
+- (void) forgetButton:(CDVInvokedUrlCommand*)command
+{
+    [self log:@"forgetButton"];
+
+    CDVPluginResult* result;
+
+    NSDictionary *config = [command.arguments objectAtIndex:0];
+    NSString* BUTTON_ID = [config objectForKey:@"buttonId"];
+
+    if(BUTTON_ID == nil) {
+        result = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"The ButtonId must be provided"];
+        [self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
+        return;
+    }
+
+    NSArray * kButtons = [[SCLFlicManager sharedManager].knownButtons allValues];
+    for (SCLFlicButton *button in kButtons) {
+        NSString* buttonIdentifier = [button.buttonIdentifier UUIDString];
+        if([buttonIdentifier isEqualToString:BUTTON_ID]) {
+            [[SCLFlicManager sharedManager] forgetButton:button];
+
+            result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK];
+            [self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
+            return;
+        }
+    }
+
+    result = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Button not found"];
+    [self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
+    return;
 }
 
 - (void) waitForButtonEvent:(CDVInvokedUrlCommand*)command
@@ -109,8 +136,6 @@ static NSString * const BUTTON_EVENT_HOLD = @"hold";
     self.onButtonClickCallbackId = command.callbackId;
     return;
 }
-
-
 
 // button received
 - (void)flicManager:(SCLFlicManager *)manager didGrabFlicButton:(SCLFlicButton *)button withError:(NSError *)error;
@@ -241,7 +266,6 @@ static NSString * const BUTTON_EVENT_HOLD = @"hold";
         NSLog(@"handleOpenURL %@", url);
     }
 }
-
 - (CDVPluginResult *)createResult:(NSURL *)url {
     NSDictionary* data = @{
                            @"url": [url absoluteString] ?: @"",

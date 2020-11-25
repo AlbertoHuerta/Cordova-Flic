@@ -1,4 +1,4 @@
-package com.jguix.cordova;
+package com.bhe97.cordova.Flic;
 
 import android.content.Context;
 import android.content.Intent;
@@ -97,6 +97,7 @@ public class Flic extends CordovaPlugin {
             // Restore buttons grabbed in a previous run of the activity
             List<FlicButton> buttons = manager.getKnownButtons();
             for (FlicButton button : buttons) {
+                enableButton(button);
                 JSONObject jsonButton = createJSONButton(button);
                 jsonButtons.put(jsonButton);
                 Log.d(TAG, "Found an existing button: " + jsonButton.get("buttonId")
@@ -122,7 +123,7 @@ public class Flic extends CordovaPlugin {
             // Get buttonId from arguments
             final JSONObject options = args.getJSONObject(0);
             final String buttonId = options.getString("buttonId");
-
+            Log.d(TAG, "BUTTONID: " + buttonId);
             // Forget button
             manager.forgetButton(manager.getButtonByDeviceId(buttonId));
 
@@ -175,13 +176,14 @@ public class Flic extends CordovaPlugin {
 
     private void enableButton(FlicButton button) {
         if (button != null) {
+            button.setFlicButtonCallbackFlags(15); // ALL
             button.registerListenForBroadcast(FlicBroadcastReceiverFlags.CLICK_OR_DOUBLE_CLICK_OR_HOLD);
             Log.d(TAG, "SUCCESS: Registered a button " + button.getButtonId());
             Log.d(TAG, "Registerd  FlicBroadcastReceiverFlags=" + FlicBroadcastReceiverFlags.CLICK_OR_DOUBLE_CLICK_OR_HOLD);
-            Toast.makeText(super.webView.getContext(), "Flic Button Registered", Toast.LENGTH_SHORT).show();
+            //Toast.makeText(super.webView.getContext(), "Flic Button Registered", Toast.LENGTH_SHORT).show();
         } else {
             Log.w(TAG, "WARNING: Did not register any button");
-            Toast.makeText(super.webView.getContext(), "WARNING: Did not register any button", Toast.LENGTH_SHORT).show();
+            //Toast.makeText(super.webView.getContext(), "WARNING: Did not register any button", Toast.LENGTH_SHORT).show();
         }
     }
 

@@ -1,8 +1,6 @@
 //
 //  Flic
 //
-//  Created by Maxim Dukhanov <m.dukhanov@gmail.com>
-//
 
 #import <UIKit/UIKit.h>
 #import <fliclib/fliclib.h>
@@ -16,6 +14,7 @@
 - (void) init:(CDVInvokedUrlCommand*)command;
 - (void) getKnownButtons:(CDVInvokedUrlCommand*)command;
 - (void) grabButton:(CDVInvokedUrlCommand*)command;
+- (void) forgetButton:(CDVInvokedUrlCommand*)command;
 - (void) waitForButtonEvent:(CDVInvokedUrlCommand*)command;
 - (void) triggerButtonEvent:(CDVInvokedUrlCommand*)command;
 - (void) onButtonClick:(CDVInvokedUrlCommand*)command;
